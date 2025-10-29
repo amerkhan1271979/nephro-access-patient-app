@@ -1,0 +1,58 @@
+version: 1
+applications:
+  - appRoot: .
+    backend:
+      phases:
+        preBuild:
+          commands:
+            # Enable pnpm support
+            - corepack enable
+            # Install backend dependencies
+            - pnpm install --no-frozen-lockfile
+        build:
+          commands:
+            # Deploy the Amplify backend (auth, api, etc.)
+            - pnpm exec ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+      artifacts:
+        baseDirectory: build
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - amplify/backend/**/*
+          - cdk.out/**/*
+
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - corepack enable
+            # Install frontend deps
+            - pnpm install --no-frozen-lockfile
+        build:
+          commands:
+            # Build SSR-ready Next.js app
+            - pnpm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+
+    environment:
+      # General environment settings
+      NODE_ENV: "production"
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_OPTIONS: "--max_old_space_size=4096"
+
+      # Amplify + Next.js integration
+      AMPLIFY_MONOREPO_APP_ROOT: "."
+      NEXT_PUBLIC_AMPLIFY_ENV: $AWS_BRANCH
+
+      # Optional custom API URLs or per-environment vars
+      NEXT_PUBLIC_API_URL: "https://$AWS_BRANCH.api.nephro-access.app"
